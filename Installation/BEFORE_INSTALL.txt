@@ -1,0 +1,2 @@
+DISCLAIMER: Whisper does not share your data with anyone, as it is kept locally on your computer.
+The data is installed in your a local appdata folder called "Plazma-Whisper".

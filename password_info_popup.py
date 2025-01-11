@@ -2,11 +2,8 @@ import tkinter as tk
 import sv_ttk
 
 from tkinter import ttk, messagebox
-from threading import Thread
-from time import sleep
 
-from utils import generate_password
-from data import PASSWORD_LENGTH
+from utils import generate_password, DataManager
 
 class PasswordInfoPopup:
     def __init__(self, parent_root: tk.Tk, app_name: str, passwords_dict: dict) -> None:
@@ -21,6 +18,7 @@ class PasswordInfoPopup:
         self.root = tk.Toplevel(self.parent_root)
         self.root.geometry("400x400")
         self.root.title(f"Whisper - '{app_name}' Info")
+        self.root.iconbitmap("whisper.ico")
         self.root.focus()
 
         sv_ttk.set_theme("dark")
@@ -71,7 +69,7 @@ class PasswordInfoPopup:
         self.exit()
 
     def generate_new_password(self) -> None:
-        new_password = generate_password(PASSWORD_LENGTH)
+        new_password = generate_password(DataManager().PASSWORD_LENGTH)
 
         self.password_entry.delete(0, tk.END)
         self.password_entry.insert(1, new_password)

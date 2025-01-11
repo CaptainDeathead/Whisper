@@ -4,19 +4,26 @@ import json
 import csv
 
 from tkinter import ttk, messagebox, filedialog
-from threading import Thread
 
+from installer import runwizard
 from password_info_popup import PasswordInfoPopup
-from utils import generate_password
-from data import PASSWORDS_PATH, PASSWORD_LENGTH, AUTOFILL_EMAIL
+from utils import generate_password, DataManager
 
 class PasswordManager:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.geometry("550x750")
         self.root.title("Whisper - Password Manager")
+        self.root.iconbitmap("whisper.ico")
 
         sv_ttk.set_theme("dark")
+
+        self.data_manager = DataManager()
+
+        try: self.data_manager.init()
+        except:
+            runwizard()
+            self.data_manager.init()
 
         self.passwords_dict = {}
         self.load_passwords()
@@ -36,7 +43,7 @@ class PasswordManager:
         ttk.Label(email_frame, text="       Email:  ", font=("arial")).pack(side=tk.LEFT)
 
         self.email_entry = ttk.Entry(email_frame, width=30)
-        self.email_entry.insert(1, AUTOFILL_EMAIL)
+        self.email_entry.insert(1, self.data_manager.AUTOFILL_EMAIL)
         self.email_entry.pack(side=tk.LEFT)
 
         password_frame = ttk.Frame(self.root)
@@ -100,17 +107,17 @@ class PasswordManager:
         messagebox.showerror("Error!", text)
 
     def load_passwords(self) -> None:
-        with open(PASSWORDS_PATH, "r") as f:
+        with open(self.data_manager.PASSWORDS_PATH, "r") as f:
             raw_json = f.read()
 
         self.passwords_dict = json.loads(raw_json)
 
     def save_passwords(self) -> None:
-        with open(PASSWORDS_PATH, "w") as f:
+        with open(self.data_manager.PASSWORDS_PATH, "w") as f:
             f.write(json.dumps(self.passwords_dict))
 
     def generate_new_password(self) -> None:
-        new_password = generate_password(PASSWORD_LENGTH)
+        new_password = generate_password(self.data_manager.PASSWORD_LENGTH)
 
         self.password_entry.delete(0, tk.END)
         self.password_entry.insert(1, new_password)
