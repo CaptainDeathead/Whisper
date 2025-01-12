@@ -5,6 +5,7 @@ import platform
 import sys
 import ctypes
 import hashlib
+import base64
 
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -13,6 +14,7 @@ from ctypes import wintypes
 import keyring
 
 from tkinter import messagebox, simpledialog
+from time import time
 
 class WindowsCredentialLocker:
     CRED_TYPE_GENERIC = 1
@@ -33,6 +35,12 @@ class WindowsCredentialLocker:
             ("TargetAlias", wintypes.LPWSTR),
             ("UserName", wintypes.LPWSTR),
         ]
+        
+    @staticmethod
+    def get_current_windows_filetime() -> int:
+        current_time = int(time() * 10000000) + 116444736000000000
+        filetime = wintypes.FILETIME(current_time & 0xFFFFFFFF, (current_time >> 32) & 0xFFFFFFFF)
+        return filetime
 
     @staticmethod
     def store_master_password(target_name: str, password: str) -> None:
@@ -44,7 +52,7 @@ class WindowsCredentialLocker:
         cred.CredentialBlobSize = len(password)
         cred.Persist = WindowsCredentialLocker.CRED_PERSIST_LOCAL_MACHINE
         cred.Comment = None
-        cred.LastWritten = None
+        cred.LastWritten = WindowsCredentialLocker.get_current_windows_filetime()
         cred.AttributeCount = 0
         cred.Attributes = None
         cred.TargetAlias = None
@@ -79,6 +87,8 @@ class LinuxCredentialLocker:
         return password
 
 class DataManager:
+    CRED_MANAGER_TARGET_NAME = "plazma_whisper"
+
     def __new__(cls):
         if not hasattr(cls, 'instance'):
             cls.instance = super(DataManager, cls).__new__(cls)
@@ -96,8 +106,6 @@ class DataManager:
 
         self.AUTOFILL_EMAIL = contents[0]
         self.PASSWORD_LENGTH = int(contents[1])
-
-        self.CRED_MANAGER_TARGET_NAME = "plazma_whisper"
 
     def check_debugger_attached(self) -> None:
         system = platform.system()
@@ -117,10 +125,24 @@ class DataManager:
                             messagebox.showerror("FATAL ERROR - Debugger Present", error)
                             sys.exit(1)
 
-    def get_device_salt() -> bytes:
+    def get_device_salt(self, *args) -> bytes:
+        system = platform.system()
+
+        if system == "Windows":
+            return WindowsCredentialLocker.retrieve_master_password('plazma_whisper_salt').encode()
+        elif system == "Linux":
+            return LinuxCredentialLocker.retrieve_master_password('plazma_whisper_salt').encode()
+
+    def set_device_salt(self) -> None:
         # Return a unique hash device-specific
-        device_info = platform.node() + platform.system() + platform.processor() + str(platform.architecture()) + platform.release()
-        return hashlib.sha256(device_info.encode()).digest()
+        salt = base64.b64encode(os.urandom(16)).decode()
+        
+        system = platform.system()
+        
+        if system == "Windows":
+            WindowsCredentialLocker.store_master_password('plazma_whisper_salt', salt)
+        elif system == "Linux":
+            LinuxCredentialLocker.store_master_password('plazma_whisper_salt', salt)
 
     def get_master_password(self) -> str:
         system = platform.system()
@@ -146,14 +168,23 @@ class DataManager:
 
     def encrypt_data(self, data: bytes) -> bytes:
         iv = os.urandom(12) # Generate random initialization vector
+
+        with open(f"{self.DATA_PATH}/iv.txt", "w") as f:
+            f.write(base64.b64encode(iv).decode())
+
         aesgcm = AESGCM(self.get_master_key())
         encrypted_data = aesgcm.encrypt(iv, data, None)
         return iv + encrypted_data # Store the IV with the encrypted data
     
     def decrypt_data(self, encrypted_data: bytes) -> bytes:
-        iv = encrypted_data[:12]
-        ciphertext = encrypted_data[12:]
+        with open(f"{self.DATA_PATH}/iv.txt", "r") as f:
+            iv_b64 = f.read()
+
+        iv = base64.b64decode(iv_b64)
+
+        ciphertext = encrypted_data
         aesgcm = AESGCM(self.get_master_key())
+
         return aesgcm.decrypt(iv, ciphertext, None)
 
 def get_data_path():

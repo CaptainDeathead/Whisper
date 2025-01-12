@@ -2,6 +2,7 @@ import tkinter as tk
 import sv_ttk
 import json
 import csv
+import base64
 
 from tkinter import ttk, messagebox, filedialog
 from time import sleep
@@ -12,19 +13,18 @@ from utils import generate_password, DataManager
 
 class PasswordManager:
     def __init__(self) -> None:
+        self.data_manager = DataManager()
+
+        try: self.data_manager.init()
+        except:
+            runwizard()
+
         self.root = tk.Tk()
         self.root.geometry("550x750")
         self.root.title("Whisper - Password Manager")
         self.root.iconbitmap("whisper.ico")
 
         sv_ttk.set_theme("dark")
-
-        self.data_manager = DataManager()
-
-        try: self.data_manager.init()
-        except:
-            runwizard()
-            self.data_manager.init()
 
         self.passwords_dict = {}
         self.load_passwords()
@@ -109,13 +109,19 @@ class PasswordManager:
 
     def load_passwords(self) -> None:
         with open(self.data_manager.PASSWORDS_PATH, "r") as f:
-            raw_json = f.read()
+            raw_json_encrypted_b64 = f.read()
 
-        self.passwords_dict = json.loads(raw_json)
+        raw_json_encrypted = base64.b64decode(raw_json_encrypted_b64)
+        raw_json = self.data_manager.decrypt_data(raw_json_encrypted)
+
+        self.passwords_dict = json.loads(raw_json.decode())
 
     def save_passwords(self) -> None:
+        raw_json = json.dumps(self.passwords_dict)
+        raw_json_encrypted = self.data_manager.encrypt_data(raw_json.encode())[12:]
+
         with open(self.data_manager.PASSWORDS_PATH, "w") as f:
-            f.write(json.dumps(self.passwords_dict))
+            f.write(base64.b64encode(raw_json_encrypted).decode())
 
     def generate_new_password(self) -> None:
         new_password = generate_password(self.data_manager.PASSWORD_LENGTH)
@@ -197,7 +203,7 @@ class PasswordManager:
         reader = csv.DictReader(f)
 
         for row in reader:
-            self.passwords_dict[row['name']] = row['password']
+            self.passwords_dict[row['name']] = {"email": row.get('email', row.get('username', '')), "password": row['password']}
 
         self.populate_passwords_textbox()
         self.save_passwords()

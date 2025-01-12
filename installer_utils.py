@@ -30,8 +30,7 @@ def get_data_path():
     if system == "Windows":
         appdata_path = os.getenv("LOCALAPPDATA")
 
-        os.chdir(appdata_path)
-        os.makedirs("Plazma-Whisper", exist_ok=True)
+        os.makedirs(f"{appdata_path}/Plazma-Whisper", exist_ok=True)
         
         if appdata_path:
             full_path = f"{appdata_path}/Plazma-Whisper"
