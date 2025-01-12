@@ -4,6 +4,7 @@ import json
 import csv
 
 from tkinter import ttk, messagebox, filedialog
+from time import sleep
 
 from installer import runwizard
 from password_info_popup import PasswordInfoPopup
@@ -145,10 +146,7 @@ class PasswordManager:
 
         self.populate_passwords_textbox()
 
-    def view_password_info(self, name: str) -> None:
-        password_info_popup = PasswordInfoPopup(self.root, name, self.passwords_dict)
-        result = password_info_popup.main()
-
+    def collect_password_update(self, name: str, result: dict) -> None:
         if result.get("delete") is not None:
             del self.passwords_dict[name]
             self.showok(f"{name} successfully deleted!")
@@ -161,6 +159,10 @@ class PasswordManager:
                 messagebox.showinfo("Success", f"The email / password for {name} successfully updated.")
 
         self.save_passwords()
+
+    def view_password_info(self, name: str) -> None:
+        password_info_popup = PasswordInfoPopup(self.root, name, self.passwords_dict, self.collect_password_update)
+        password_info_popup.main()
 
     def filter_passwords_dict(self) -> list[str]:
         query = self.search_entry.get().strip()

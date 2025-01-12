@@ -6,10 +6,11 @@ from tkinter import ttk, messagebox
 from utils import generate_password, DataManager
 
 class PasswordInfoPopup:
-    def __init__(self, parent_root: tk.Tk, app_name: str, passwords_dict: dict) -> None:
+    def __init__(self, parent_root: tk.Tk, app_name: str, passwords_dict: dict, collect_password_update: object) -> None:
         self.parent_root = parent_root
         self.app_name = app_name
         self.passwords_dict = passwords_dict
+        self.collect_password_update = collect_password_update
 
         self.delete = False
         self.apply = False
@@ -58,7 +59,16 @@ class PasswordInfoPopup:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def exit(self) -> None:
-        exit()
+        self.root.destroy()
+
+        if self.delete:
+            result = {"delete": "yep"}
+        elif self.apply:
+            result = self.passwords_dict[self.app_name]
+        else:
+            result = {}
+
+        self.collect_password_update(self.app_name, result)
     
     def on_close(self) -> None:
         if self.email_entry.get().strip() != self.original_email or self.password_entry.get().strip() != self.original_password:
@@ -98,18 +108,5 @@ class PasswordInfoPopup:
 
             self.exit()
 
-    def run(self) -> None:
-        self.root.mainloop()
-
     def main(self) -> None:
-        try: self.run()
-        except: pass
-
-        self.root.destroy()
-
-        if self.delete:
-            return {"delete": "yep"}
-        elif self.apply:
-            return self.passwords_dict[self.app_name]
-        else:
-            return {}
+        self.root.mainloop()
