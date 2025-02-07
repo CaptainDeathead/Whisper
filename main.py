@@ -5,7 +5,7 @@ import csv
 import base64
 
 from tkinter import ttk, messagebox, filedialog
-from time import sleep
+from pathlib import Path
 
 from installer import runwizard
 from password_info_popup import PasswordInfoPopup
@@ -99,7 +99,11 @@ class PasswordManager:
         self.generate_new_password()
         self.populate_passwords_textbox()
 
-        ttk.Button(self.root, text="Import csv file", command=self.import_csv_file).pack(pady=5)
+        csv_frame = ttk.Frame(self.root)
+        csv_frame.pack(pady=5)
+
+        ttk.Button(csv_frame, text="Import csv file", command=self.import_csv_file).pack(side=tk.LEFT, padx=5)
+        ttk.Button(csv_frame, text="Export csv file", command=self.export_csv_file).pack(side=tk.LEFT, padx=5)
 
     def showok(self, text: str) -> None:
         messagebox.showinfo("Success!", text)
@@ -208,6 +212,19 @@ class PasswordManager:
         self.populate_passwords_textbox()
         self.save_passwords()
         self.showok("CSV file imported successfully!")
+
+    def export_csv_file(self) -> None:
+        downloads_folder = str(Path.home() / "Downloads")
+
+        with open(f"{downloads_folder}/passwords.csv", "w") as f:
+            writer = csv.DictWriter(f, ["name", "email", "password"])
+            writer.writeheader()
+
+            for name, value in self.passwords_dict.items():
+                data = {"name": name, "email": value["email"], "password": value["password"]}
+                writer.writerow(data)
+
+        self.showok("Passwords exported as 'passwords.csv' in your downloads folder.\nPlease keep them safe!")
 
     def main(self) -> None:
         self.root.mainloop()
